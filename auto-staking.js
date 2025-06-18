@@ -148,7 +148,7 @@ const STAKING_CONTRACT_ABI = [
     anonymous: false,
     inputs: [
       {
-        indexed: false,
+        indexed: true,
         internalType: "address",
         name: "staker",
         type: "address",
@@ -331,7 +331,7 @@ async function stakeLink() {
     const gasPrice = await web3.eth.getGasPrice();
 
     const tx = linkContract.methods
-      .transfer(STAKING_CONTRACT_ADDRESS, stakeAmount)
+      .transferAndCall(STAKING_CONTRACT_ADDRESS, stakeAmount, "0x")
       .send({
         from: account.address,
         gas: 300000,
@@ -416,6 +416,7 @@ async function handleUnstakedEvent() {
   } catch (setupError) {
     console.error("Event setup failed:", setupError.message);
     setTimeout(handleUnstakedEvent, 5000);
+    sendTelegramNotification(`❌ Event setup failed: ${setupError.message}`);
   }
 }
 
