@@ -71,7 +71,7 @@ TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 Once everything is set up, run the bot with:
 
 ```bash
-node index.js
+npm start
 ```
 
 You should see logs in your terminal indicating the bot is running and watching the staking pool.
