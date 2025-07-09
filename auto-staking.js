@@ -214,6 +214,9 @@ const stakingContract = new web3.eth.Contract(
   STAKING_CONTRACT_ABI,
   STAKING_CONTRACT_ADDRESS
 );
+// Direct Staking Guide: https://ipfs.io/ipfs/QmUWDupeN4D5vHNWH6dEbNuoiZz9bnbqTHw61L27RG6tE2
+const dataFieldStakingPool =
+  "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000";
 
 // Get account from private key
 const account = web3.eth.accounts.privateKeyToAccount(PRIVATE_KEY);
@@ -269,6 +272,29 @@ async function getNextNonce() {
 }
 let isStaking = false;
 
+// Add this function to replace stuck transactions
+async function replaceStuckTransaction(stuckTxHash, newGasPrice) {
+  try {
+    const tx = await web3.eth.getTransaction(stuckTxHash);
+    if (!tx) return;
+
+    const cancelTx = {
+      from: account.address,
+      to: account.address,
+      value: "0",
+      gas: 21000,
+      gasPrice: newGasPrice,
+      nonce: tx.nonce,
+    };
+
+    const receipt = await web3.eth.sendTransaction(cancelTx);
+    console.log(`Cancellation tx sent: ${receipt.transactionHash}`);
+    return receipt;
+  } catch (error) {
+    console.error("Failed to replace transaction:", error.message);
+  }
+}
+
 async function stakeLink() {
   if (isStaking) {
     console.log("Staking already in progress. Skipping.");
@@ -307,7 +333,8 @@ async function stakeLink() {
       parseFloat(balanceInLink),
       parseFloat(availableSpaceInLink)
     );
-    if (stakeAmountInLink <= 0) {
+    // Less than 1 LINK will be not staked
+    if (Math.round(Math.floor(stakeAmountInLink)) <= 0) {
       console.log(
         "No LINK available to stake (insufficient balance or pool space)."
       );
@@ -322,19 +349,25 @@ async function stakeLink() {
     );
 
     // Check and approve LINK if necessary
-    if (!(await checkAllowance(stakeAmount))) {
-      await approveLink(stakeAmount);
-    }
+    // if (!(await checkAllowance(stakeAmount))) {
+    //   await approveLink(stakeAmount);
+    // }
 
     // Stake LINK
     console.log(`Staking ${stakeAmountStr} LINK...`);
-    const gasPrice = await web3.eth.getGasPrice();
+
+    // Get gas price 50% higher than current
+    const gasPrice = await _setHigherGasPrice(2);
 
     const tx = linkContract.methods
-      .transferAndCall(STAKING_CONTRACT_ADDRESS, stakeAmount, "0x")
+      .transferAndCall(
+        STAKING_CONTRACT_ADDRESS,
+        stakeAmount,
+        dataFieldStakingPool
+      )
       .send({
         from: account.address,
-        gas: 300000,
+        gas: 600000,
         gasPrice,
         nonce: await getNextNonce(),
       });
@@ -349,11 +382,25 @@ async function stakeLink() {
     await sendTelegramNotification(message);
   } catch (error) {
     console.error("Staking failed:", error.message);
-    // Reset nonce on failure
+
+    // Handle timeout errors
+    if (error.message.includes("was not mined within")) {
+      const txHash = error.receipt?.transactionHash;
+      if (txHash) {
+        const newGasPrice = await _setHigherGasPrice(1.5);
+        console.log(`Attempting to replace stuck transaction ${txHash}`);
+        await replaceStuckTransaction(txHash, newGasPrice);
+      }
+    }
+
     currentNonce = null;
   } finally {
     isStaking = false;
   }
+}
+
+async function _setHigherGasPrice(times) {
+  return Math.floor(Number(await web3.eth.getGasPrice()) * times).toString();
 }
 
 async function checkBalance() {
