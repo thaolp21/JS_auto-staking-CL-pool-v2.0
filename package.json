@@ -1,9 +1,9 @@
 {
   "name": "auto-staking",
   "version": "1.0.0",
-  "description": "auto-staking-chainlink-pool-v2.0",
-  "license": "ISC",
-  "author": "",
+  "description": "Auto-staking bot for Chainlink staking pool v2.0",
+  "license": "MIT",
+  "author": "thaolp",
   "type": "commonjs",
   "main": "auto-staking.js",
   "scripts": {
