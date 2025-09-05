@@ -9,6 +9,7 @@ const WEB3_PROVIDER = process.env.WEB3_PROVIDER;
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 const STAKING_CONTRACT_ADDRESS = process.env.STAKING_CONTRACT_ADDRESS;
 const LINK_TOKEN_ADDRESS = process.env.LINK_TOKEN_ADDRESS;
+const MIN_STAKE_AMOUNT = process.env.MIN_STAKE_AMOUNT;
 
 const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
 const telegramChatId = process.env.TELEGRAM_CHAT_ID;
@@ -357,7 +358,7 @@ async function stakeLink() {
     console.log(`Staking ${stakeAmountStr} LINK...`);
 
     // Get gas price 50% higher than current
-    const gasPrice = await _setHigherGasPrice(2);
+    const gasPrice = await _setHigherGasPrice(1.5);
 
     const tx = linkContract.methods
       .transferAndCall(
@@ -432,17 +433,20 @@ async function handleUnstakedEvent() {
     });
 
     eventEmitter.on("data", async (event) => {
+      const amount = web3.utils.fromWei(event.returnValues.amount, "ether");
       console.log(
         `Unstaked event detected: Staker=${
           event.returnValues.staker
-        }, Amount=${web3.utils.fromWei(
-          event.returnValues.amount,
-          "ether"
-        )} LINK`
+        }, Amount=${amount} LINK`
       );
 
       if (isStaking) {
         console.log("Skipping - staking in progress");
+        return;
+      }
+
+      if (amount < MIN_STAKE_AMOUNT) {
+        console.log(`Unstaked amount (${amount} LINK) is less than minimum stake amount (${MIN_STAKE_AMOUNT} LINK). Ignoring.`);
         return;
       }
 
