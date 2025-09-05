@@ -60,6 +60,7 @@ LINK_TOKEN_ADDRESS=0x514910771AF9Ca656af840dff83E8264EcF986CA
 # Optional - Telegram Alerts
 TELEGRAM_CHAT_ID=your_telegram_chat_id
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+MIN_STAKE_AMOUNT=100
 ```
 
 > ⚠️ Never share your `.env` file or private key.
